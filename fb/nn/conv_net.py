@@ -4,16 +4,21 @@ import torch.optim as optim
 
 class NeuralNetwork(nn.Module):
 
-    def __init__(self):
+    def __init__(self,
+                 number_of_actions,
+                 gamma,
+                 initial_epsilon,
+                 final_epsilon,
+                 replay_memory_size,
+                 batch_size):
         super(NeuralNetwork, self).__init__()
 
-        self.number_of_actions = 2
-        self.gamma = 0.99
-        self.final_epsilon = 0.0001
-        self.initial_epsilon = 0.1
-        self.number_of_iterations = 2000000
-        self.replay_memory_size = 10000
-        self.minibatch_size = 256
+        self.number_of_actions = number_of_actions
+        self.gamma = gamma
+        self.final_epsilon = final_epsilon
+        self.initial_epsilon = initial_epsilon
+        self.replay_memory_size = replay_memory_size
+        self.minibatch_size = batch_size
 
         self.conv1 = nn.Conv2d(4, 32, 8, 4)
         self.relu1 = nn.ReLU(inplace=True)
