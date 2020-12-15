@@ -2,3 +2,4 @@ numpy
 torch
 pygame
 opencv2
+tqdm

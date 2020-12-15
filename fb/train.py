@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+from tqdm import tqdm
 from fb.nn.conv_net import NeuralNetwork
 from fb.utils import resize_and_bgr2gray, image_to_tensor, init_weights
 
@@ -55,6 +55,7 @@ def train(model: NeuralNetwork,
     # Start with high learning rate and slow down as we train
     epsilon_decrements = np.linspace(model.initial_epsilon, model.final_epsilon, max_iteration)
 
+    pbar = tqdm(total=max_iteration + 1 - iteration_index)
     # main infinite loop
     while iteration_index < max_iteration:
 
@@ -70,10 +71,6 @@ def train(model: NeuralNetwork,
 
         # epsilon greedy exploration
         random_action = random.random() <= epsilon
-
-        if random_action:
-            print("Performed random action!")
-
         if random_action:
             action_index = [torch.randint(model.number_of_actions, torch.Size([]), dtype=torch.int)]
         else:
@@ -170,6 +167,9 @@ def train(model: NeuralNetwork,
         current_state = next_state
         iteration_index += 1
 
+        # if random_action:
+        #     print("Performed random action!")
+
         if iteration_index % 25000 == 0:
             file = "pretrained_model/current_model_" + str(iteration_index) + ".pth"
             if os.path.exists(file):
@@ -177,6 +177,12 @@ def train(model: NeuralNetwork,
             torch.save(model, file)
             torch.save(model, "pretrained_model/latest_model.pth")
 
-        print("iteration:", iteration_index, "elapsed time:", time.time() - start, "epsilon:", epsilon, "action:",
-              action_index.cpu().detach().numpy(), "reward:", future_reward.numpy()[0][0], "Q max:",
-              np.max(output.cpu().detach().numpy()))
+        if iteration_index % 2500 == 0:
+
+            print("iteration:", iteration_index, "elapsed time:", time.time() - start, "epsilon:", epsilon, "action:",
+                  action_index.cpu().detach().numpy(), "reward:", future_reward.numpy()[0][0], "Q max:",
+                  np.max(output.cpu().detach().numpy()))
+
+        pbar.update(1)
+
+    pbar.close()
