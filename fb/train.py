@@ -88,7 +88,7 @@ def train(model: NeuralNetwork,
         action[action_index] = 1
 
         # get next state and reward
-        next_image_data, future_reward, future_terminal_state = game_state.frame_step(action)  # (288, 512, 3)
+        next_image_data, reward, terminal_state = game_state.frame_step(action)  # (288, 512, 3)
 
         next_image_data = resize_and_bgr2gray(next_image_data)  # (84, 84, 1)
         next_image_data = image_to_tensor(next_image_data)  # [1, 84, 84]
@@ -98,12 +98,13 @@ def train(model: NeuralNetwork,
         # print(current_state.squeeze(0)[1:, :, :].shape)   # [3, 84, 84]
         # Discard first channel in the image and add next screen shot to end of the image channel
         next_state = torch.cat((current_state.squeeze(0)[1:, :, :], next_image_data)).unsqueeze(0)  # [1, 4, 84, 84]
-        future_reward = torch.from_numpy(np.array([future_reward], dtype=np.float32)).unsqueeze(0)  # [1, 1]
+        reward = torch.from_numpy(np.array([reward], dtype=np.float32)).unsqueeze(0)  # [1, 1]
 
         action = action.unsqueeze(0)  # [1, 2]
 
         # save transition to replay memory
-        replay_memory.append((current_state, action, future_reward, next_state, future_terminal_state))
+        # s_t, a_t, r_t, s_t+1, terminal
+        replay_memory.append((current_state, action, reward, next_state, terminal_state))
 
         # if replay memory is full, remove the oldest transition
         if len(replay_memory) > model.replay_memory_size:
@@ -118,13 +119,13 @@ def train(model: NeuralNetwork,
         # unpack minibatch
         current_state_batch = torch.cat(tuple(d[0] for d in minibatch))
         action_batch = torch.cat(tuple(d[1] for d in minibatch))
-        next_state_reward_batch = torch.cat(tuple(d[2] for d in minibatch))
+        reward_batch = torch.cat(tuple(d[2] for d in minibatch))
         next_state_batch = torch.cat(tuple(d[3] for d in minibatch))
 
         if torch.cuda.is_available():  # put on GPU if CUDA is available
             current_state_batch = current_state_batch.cuda()  # [1, 4, 84, 84]
             action_batch = action_batch.cuda()  # [1, 2]
-            next_state_reward_batch = next_state_reward_batch.cuda()  # [1, 1]
+            reward_batch = reward_batch.cuda()  # [1, 1]
             next_state_batch = next_state_batch.cuda()  # [1, 4, 84, 84]
 
         # get output for the next state
@@ -138,9 +139,9 @@ def train(model: NeuralNetwork,
         y_batch = []
         for i in range(len(minibatch)):
             if minibatch[i][4]:
-                res = next_state_reward_batch[i]
+                res = reward_batch[i]
             else:
-                res = next_state_reward_batch[i] + model.gamma * torch.max(next_state_output[i])   # [1]
+                res = reward_batch[i] + model.gamma * torch.max(next_state_output[i])   # [1]
                 # print(res.shape)
             y_batch.append(res)
 
@@ -180,7 +181,7 @@ def train(model: NeuralNetwork,
         if iteration_index % 2500 == 0:
 
             print("iteration:", iteration_index, "elapsed time:", time.time() - start, "epsilon:", epsilon, "action:",
-                  action_index.cpu().detach().numpy(), "reward:", future_reward.numpy()[0][0], "Q max:",
+                  action_index.cpu().detach().numpy(), "reward:", reward.numpy()[0][0], "Q max:",
                   np.max(output.cpu().detach().numpy()))
 
         pbar.update(1)
