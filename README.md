@@ -1,4 +1,4 @@
-# rl_flappy_bird
+# rl-flappy-bird
 Helping flappy bird to fly with Reinforcement Learning
 
 ## Python Environment Setup
